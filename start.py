@@ -2,8 +2,9 @@ import threading
 import time
 
 class Job:
-    def __init__(self, name: str, duration: int):
+    def __init__(self, name: str, arival: int, duration: int):
         self.name = name
+        self.arival = arival
         self.duration = duration
         self.remaining = duration
 
@@ -38,6 +39,11 @@ class Worker:
     def stop(self):
         self.running = False
 
+    def print_jobs(self):
+        for j in self.jobs:
+            print(j.name, end=" ")
+        print("")
+
     # to be run in a thread
     def work(self):
         # optimize it with sime signals stuff
@@ -64,32 +70,41 @@ def balance_baby(workers: Worker, target: Worker):
             break
 
 def main():
-    jobs1 = [Job("a1",10),Job("a2",5),Job("a3",4), Job("a4",10)]
-    jobs2 = [Job("b1",3),Job("b2",3),Job("b3",2)]
-    t1 = Worker(jobs1, "worker1")
-    t2 = Worker(jobs2, "worker2")
+    jobs = [Job("a1",0,10),Job("a2",0,5),Job("a3",0,4), Job("a4",0,10),
+            Job("b1",0,3),Job("b2",0,3),Job("b3",0,2),Job("George",1,3)]
+    n_workers = 3
+    slice_p = len(jobs)//n_workers
+    jobs_w = []
+
+    for i in range(n_workers):
+        jobs_w.append(jobs[slice_p*i : slice_p*i + slice_p])
+    for i in range(len(jobs)%n_workers):
+        start = len(jobs) - len(jobs)%n_workers
+        jobs_w[i].append(jobs[start+i])
+
+    workers = []
+    for i in range(n_workers):
+        t = Worker(jobs_w[i], f"worker{i}")
+        t.print_jobs()
+        workers.append(t)
   
-    # starting thread 1
-    t1.start()
-    # starting thread 2
-    t2.start()
+    for w in workers:
+        w.start()
 
-    t_list = [t1, t2]
-
-    while len(t_list) > 0:
+    while len(workers) > 0:
         to_pop = []
-        for (i, t) in enumerate(t_list):
+        for (i, t) in enumerate(workers):
             # first try to give something else to work on
             if t.is_working() == False:
-                balance_baby(t_list, t)
+                balance_baby(workers, t)
             if t.is_working() == False:
                 print("joining {}".format( t.thread.native_id))
                 t.stop()
                 t.join()
                 to_pop.append(i)
         for i in to_pop:
-            if i < len(t_list):
-                t_list.pop(i)
+            if i < len(workers):
+                workers.pop(i)
 
 if __name__ == "__main__":
     main()
