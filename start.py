@@ -2,11 +2,12 @@ import threading
 import time
 
 class Job:
-    def __init__(self, name: str, arival: int, duration: int):
+    def __init__(self, name: str, arival: int, duration: int, priority: int):
         self.name = name
         self.arival = arival
         self.duration = duration
         self.remaining = duration
+        self.priority = priority
 
     def is_done(self):
         if self.remaining <= 0:
@@ -17,11 +18,12 @@ class Job:
 class Worker:
     def __init__(self, jobs, name = "no_name"):
         self.thread = threading.Thread(target=self.work, args=())
+        self.cur_time = 1
         self.name = name
         self.jobs = jobs
         self.running = True
         self.quantum = 2
-        self.alg = self.SJF
+        self.alg = self.priority_based
 
     def start(self):
         self.thread.start()
@@ -80,6 +82,14 @@ class Worker:
         time.sleep(next_j.duration)
         self.jobs.remove(next_j)
 
+    def priority_based(self):
+        if len(self.jobs) < 1:
+            return
+        next_j = min(self.jobs, key=lambda j : j.priority)
+        print(self.name, "Working on", next_j.name, next_j.duration)
+        time.sleep(next_j.duration)
+        self.jobs.remove(next_j)
+
 
 def balance_baby(workers: Worker, target: Worker):
     for w in workers:
@@ -97,7 +107,8 @@ def read_job(line: str):
         name = fields[0].strip(" ")
         arival = int(fields[1].strip(" "))
         duration = int(fields[2].strip(" "))
-        return Job(name, arival, duration)
+        priority = int(fields[3].strip(" "))
+        return Job(name, arival, duration, priority)
     except:
         return None
 
