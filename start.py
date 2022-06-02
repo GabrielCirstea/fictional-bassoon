@@ -47,19 +47,25 @@ class Worker:
             print(j.name, end=" ")
         print("")
 
-    # to be run in a thread
+    # run the thread until is semnaled to stop
     def work(self):
         # optimize it with sime signals stuff
         while self.running:
             self.alg()
         print("Stoping worker:", self.name)
 
+    # do the task, update the current time
+    def step_task(self, duration: int):
+        time.sleep(duration//2)
+        self.cur_time += duration
+
+    # first come first serverd
     def FCFS(self):
         for j in self.jobs:
             print(self.name, "Working on", j.name)
             # round robin stuff
             slp_time = j.duration
-            time.sleep(slp_time)     # execute the task
+            self.step_task(slp_time)
             j.remaining -= slp_time
             if j.is_done():
                 self.jobs.remove(j)
@@ -69,17 +75,18 @@ class Worker:
             print(self.name, "Working on", j.name)
             # round robin stuff
             slp_time = min(j.duration, self.quantum)
-            time.sleep(slp_time)     # execute the task
+            self.step_task(slp_time)
             j.remaining -= slp_time
             if j.is_done():
                 self.jobs.remove(j)
 
+    # sortest job first
     def SJF(self):
         if len(self.jobs) < 1:
             return
         next_j = min(self.jobs, key=lambda j : j.duration)
         print(self.name, "Working on", next_j.name, next_j.duration)
-        time.sleep(next_j.duration)
+        self.step_task(next_j.duration)
         self.jobs.remove(next_j)
 
     def priority_based(self):
@@ -87,7 +94,7 @@ class Worker:
             return
         next_j = min(self.jobs, key=lambda j : j.priority)
         print(self.name, "Working on", next_j.name, next_j.duration)
-        time.sleep(next_j.duration)
+        self.step_task(next_j.duration)
         self.jobs.remove(next_j)
 
 
@@ -124,6 +131,7 @@ def main():
             if job:
                 jobs.append(job)
 
+    jobs.sort(key=lambda x : x.arival)
     n_workers = 3
     slice_p = len(jobs)//n_workers
     jobs_w = []
