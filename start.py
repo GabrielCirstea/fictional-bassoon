@@ -43,14 +43,14 @@ class Worker:
         # optimize it with sime signals stuff
         while self.running:
             for j in self.jobs:
-                print(self.name, "Worcking on", j.name)
+                print(self.name, "Working on", j.name)
                 # round robin stuff
                 slp_time = min(j.duration, self.quantum)
                 time.sleep(slp_time)
                 j.remaining -= slp_time
                 if j.is_done():
                     self.jobs.remove(j)
-        print("stoping worker:", self.name)
+        print("Stoping worker:", self.name)
 
 
 def balance_baby(workers: Worker, target: Worker):
@@ -64,8 +64,8 @@ def balance_baby(workers: Worker, target: Worker):
             break
 
 def main():
-    jobs1 = [Job("a1",10),Job("a2",5),Job("a3",4), Job("a4",10)]
-    jobs2 = [Job("b1",3),Job("b2",3),Job("b3",2)]
+    jobs1 = [Job("a1",10), Job("a2",5), Job("a3",4), Job("a4",10)]
+    jobs2 = [Job("b1",3), Job("b2",3), Job("b3",2)]
     t1 = Worker(jobs1, "worker1")
     t2 = Worker(jobs2, "worker2")
   
