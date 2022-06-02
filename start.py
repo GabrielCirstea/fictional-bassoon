@@ -21,6 +21,7 @@ class Worker:
         self.jobs = jobs
         self.running = True
         self.quantum = 2
+        self.alg = self.SJF
 
     def start(self):
         self.thread.start()
@@ -48,15 +49,36 @@ class Worker:
     def work(self):
         # optimize it with sime signals stuff
         while self.running:
-            for j in self.jobs:
-                print(self.name, "Working on", j.name)
-                # round robin stuff
-                slp_time = min(j.duration, self.quantum)
-                time.sleep(slp_time)
-                j.remaining -= slp_time
-                if j.is_done():
-                    self.jobs.remove(j)
+            self.alg()
         print("Stoping worker:", self.name)
+
+    def FCFS(self):
+        for j in self.jobs:
+            print(self.name, "Working on", j.name)
+            # round robin stuff
+            slp_time = j.duration
+            time.sleep(slp_time)     # execute the task
+            j.remaining -= slp_time
+            if j.is_done():
+                self.jobs.remove(j)
+
+    def round_robin(self):
+        for j in self.jobs:
+            print(self.name, "Working on", j.name)
+            # round robin stuff
+            slp_time = min(j.duration, self.quantum)
+            time.sleep(slp_time)     # execute the task
+            j.remaining -= slp_time
+            if j.is_done():
+                self.jobs.remove(j)
+
+    def SJF(self):
+        if len(self.jobs) < 1:
+            return
+        next_j = min(self.jobs, key=lambda j : j.duration)
+        print(self.name, "Working on", next_j.name, next_j.duration)
+        time.sleep(next_j.duration)
+        self.jobs.remove(next_j)
 
 
 def balance_baby(workers: Worker, target: Worker):
@@ -69,9 +91,28 @@ def balance_baby(workers: Worker, target: Worker):
             w.jobs.pop(-1)
             break
 
+def read_job(line: str):
+    fields = line.split(",")
+    try:
+        name = fields[0].strip(" ")
+        arival = int(fields[1].strip(" "))
+        duration = int(fields[2].strip(" "))
+        return Job(name, arival, duration)
+    except:
+        return None
+
 def main():
-    jobs = [Job("a1",0,10),Job("a2",0,5),Job("a3",0,4), Job("a4",0,10),
-            Job("b1",0,3),Job("b2",0,3),Job("b3",0,2),Job("George",1,3)]
+
+    file_path = "tasks1.txt"
+    jobs = []
+    with open(file_path, "r") as f:
+        lines = f.readlines()
+        for line in lines:
+            print(line.strip("\n"))
+            job = read_job(line)
+            if job:
+                jobs.append(job)
+
     n_workers = 3
     slice_p = len(jobs)//n_workers
     jobs_w = []
