@@ -2,6 +2,7 @@
 import threading
 import time
 
+rel_time = 2
 class Job:
     def __init__(self, name: str, arival: int, duration: int, priority: int):
         self.name = name
@@ -25,6 +26,7 @@ class Worker:
         self.running = True
         self.quantum = 2
         self.cur_task = None
+        self.to_speak = False
         self.chose_alg(alg)
 
     def chose_alg(self, alg: str):
@@ -76,8 +78,11 @@ class Worker:
 
     # do the task, update the current time
     def step_task(self, duration: int):
-        time.sleep(duration//2)
+        #time.sleep(duration//3)
+        while self.to_speak == False:
+            continue
         self.cur_time += duration
+        self.to_speak = False
 
     # first come first serverd
     def FCFS(self):
@@ -95,7 +100,7 @@ class Worker:
 
     def round_robin(self):
         for j in self.jobs:
-            #print(self.name, "Working on", j.name)
+            print(self.name, "Working on", j.name)
             self.cur_task = j
             # round robin stuff
             slp_time = min(j.duration, self.quantum)
@@ -103,6 +108,7 @@ class Worker:
             j.remaining -= slp_time
             if j.is_done():
                 self.jobs.remove(j)
+                self.cur_task = None
         if len(self.jobs) < 1:
             self.cur_task = None
 
@@ -165,14 +171,19 @@ def take_jobs(all_jobs, quantum):
         all_jobs.pop(i)
     return jobs
 
-# one by one to each worker
+# DON'T TOUCH THIS
+last_index = 0
+
+# one by one to each worker - round robin wanna be
 def spread_jobs(jobs, workers):
     #print("spreding")
+    global last_index
     while len(jobs) > 0:
-        for w in workers:
+        for i in range(last_index, len(workers)):
             if len(jobs) > 0:
-                print(f"give job {jobs[0].name} to {w.name}")
-                w.jobs.append(jobs.pop(0))
+                print(f"give job {jobs[0].name} to {workers[i].name}")
+                workers[i].jobs.append(jobs.pop(0))
+                last_index = i
             else:
                 break
 
@@ -204,10 +215,12 @@ def main():
     jobs = take_jobs(all_jobs, quantum)
 
     workers = []
+    stats = []
     for i in range(n_workers):
         t = Worker([], f"worker{i}", alg="FCFS")
         t.print_jobs()
         workers.append(t)
+        stats.append(t)
 
     spread_jobs(jobs, workers)
   
@@ -215,18 +228,20 @@ def main():
         w.start()
 
     while len(workers) > 0 or len(all_jobs) > 0:
-        quantum = workers[0].cur_time
+        quantum += 2
         if len(all_jobs) > 0:
             jobs = take_jobs(all_jobs, quantum)
-            least_used(jobs, workers)
+            spread_jobs(jobs, workers)
         to_pop = []
         time.sleep(1)
         print("quantum:", quantum)
         print("-" * 20)
+        for t in workers:
+            t.to_speak = True
         for (i, t) in enumerate(workers):
             # first try to give something else to work on
-            if t.is_working() == False:
-                balance_baby(workers, t)
+            #if t.is_working() == False:
+                #balance_baby(workers, t)
             t.pretty()
             if t.is_working() == False and len(all_jobs) < 1:
                 print("joining {}".format( t.thread.native_id))
@@ -236,6 +251,9 @@ def main():
         for i in to_pop:
             if i < len(workers):
                 workers.pop(i)
+
+    for w in stats:
+        print(f"Worker {w.name} spended {w.cur_time} sec")
 
 if __name__ == "__main__":
     main()
