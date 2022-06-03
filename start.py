@@ -127,7 +127,7 @@ def take_jobs(all_jobs, quantum):
         if j.arival <= quantum:
             jobs.append(j)
             to_remove.append(i)
-    for i in to_remove:
+    for i in reversed(to_remove):
         all_jobs.pop(i)
     return jobs
 
@@ -139,6 +139,8 @@ def spread_jobs(jobs, workers):
             if len(jobs) > 0:
                 print(f"give job {jobs[0].name} to {w.name}")
                 w.jobs.append(jobs.pop(0))
+            else:
+                break
 
 def main():
 
