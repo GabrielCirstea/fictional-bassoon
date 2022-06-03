@@ -17,14 +17,25 @@ class Job:
 
 
 class Worker:
-    def __init__(self, jobs, name = "no_name"):
+    def __init__(self, jobs, name = "no_name", alg = "robin"):
         self.thread = threading.Thread(target=self.work, args=())
         self.cur_time = 1
         self.name = name
         self.jobs = jobs
         self.running = True
         self.quantum = 2
-        self.alg = self.FCFS
+        self.cur_task = None
+        self.chose_alg(alg)
+
+    def chose_alg(self, alg: str):
+        if alg == "robin":
+            self.alg = self.round_robin
+        elif alg == "FCFS":
+            self.alg = self.FCFS
+        elif alg == "priority":
+            self.alg = self.priority_based
+        elif alg == "SJF":
+            self.alg = self.SJF
 
     def start(self):
         self.thread.start()
@@ -48,6 +59,14 @@ class Worker:
             print(j.name, end=" ")
         print("")
 
+    def pretty(self):
+        print(f"{self.name}")
+        print("#" * len(self.jobs))
+        if self.cur_task:
+            print(f"Wroking on {self.cur_task.name} - {self.cur_task.remaining}/{self.cur_task.duration}")
+        else:
+            print("Sleeping")
+
     # run the thread until is semnaled to stop
     def work(self):
         # optimize it with sime signals stuff
@@ -64,22 +83,28 @@ class Worker:
     def FCFS(self):
         for j in self.jobs:
             print(self.name, "Working on", j.name)
+            self.cur_task = j
             # round robin stuff
             slp_time = j.duration
             self.step_task(slp_time)
             j.remaining -= slp_time
             if j.is_done():
                 self.jobs.remove(j)
+        if len(self.jobs) < 1:
+            self.cur_task = None
 
     def round_robin(self):
         for j in self.jobs:
-            print(self.name, "Working on", j.name)
+            #print(self.name, "Working on", j.name)
+            self.cur_task = j
             # round robin stuff
             slp_time = min(j.duration, self.quantum)
             self.step_task(slp_time)
             j.remaining -= slp_time
             if j.is_done():
                 self.jobs.remove(j)
+        if len(self.jobs) < 1:
+            self.cur_task = None
 
     # sortest job first
     def SJF(self):
@@ -87,26 +112,35 @@ class Worker:
             return
         next_j = min(self.jobs, key=lambda j : j.duration)
         print(self.name, "Working on", next_j.name, next_j.duration)
+        self.cur_task = next_j
         self.step_task(next_j.duration)
         self.jobs.remove(next_j)
+        if len(self.jobs) < 1:
+            self.cur_task = None
 
     def priority_based(self):
         if len(self.jobs) < 1:
             return
         next_j = min(self.jobs, key=lambda j : j.priority)
         print(self.name, "Working on", next_j.name, next_j.duration)
+        self.cur_task = next_j
         self.step_task(next_j.duration)
         self.jobs.remove(next_j)
+        if len(self.jobs) < 1:
+            self.cur_task = None
 
 
 def balance_baby(workers: Worker, target: Worker):
     for w in workers:
         if w == target:
-            print("Hit the same")
+            #print("Hit the same")
             continue
         if w.is_working() and len(w.jobs) > 1:
-            target.jobs.append(w.jobs[-1])
-            w.jobs.pop(-1)
+            for j in w.jobs:
+                if j == w.cur_task:
+                    continue
+                target.jobs.append(j)
+                w.jobs.remove(j)
             break
 
 def read_job(line: str):
@@ -133,7 +167,7 @@ def take_jobs(all_jobs, quantum):
 
 # one by one to each worker
 def spread_jobs(jobs, workers):
-    print("spreding")
+    #print("spreding")
     while len(jobs) > 0:
         for w in workers:
             if len(jobs) > 0:
@@ -141,6 +175,16 @@ def spread_jobs(jobs, workers):
                 w.jobs.append(jobs.pop(0))
             else:
                 break
+
+def least_used(jobs, workers):
+    while len(jobs) > 0:
+        min_j = len(workers[0].jobs)
+        the_worker = workers[0]
+        for w in workers:
+            if len(w.jobs) < min_j:
+                min_j = len(w.jobs)
+                the_worker = w
+        the_worker.jobs.append(jobs.pop(0))
 
 def main():
 
@@ -161,7 +205,7 @@ def main():
 
     workers = []
     for i in range(n_workers):
-        t = Worker([], f"worker{i}")
+        t = Worker([], f"worker{i}", alg="FCFS")
         t.print_jobs()
         workers.append(t)
 
@@ -174,14 +218,16 @@ def main():
         quantum = workers[0].cur_time
         if len(all_jobs) > 0:
             jobs = take_jobs(all_jobs, quantum)
-            spread_jobs(jobs, workers)
+            least_used(jobs, workers)
         to_pop = []
         time.sleep(1)
         print("quantum:", quantum)
+        print("-" * 20)
         for (i, t) in enumerate(workers):
             # first try to give something else to work on
-            #if t.is_working() == False:
-                #balance_baby(workers, t)
+            if t.is_working() == False:
+                balance_baby(workers, t)
+            t.pretty()
             if t.is_working() == False and len(all_jobs) < 1:
                 print("joining {}".format( t.thread.native_id))
                 t.stop()
