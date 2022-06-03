@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import threading
 import time
 
@@ -23,7 +24,7 @@ class Worker:
         self.jobs = jobs
         self.running = True
         self.quantum = 2
-        self.alg = self.priority_based
+        self.alg = self.FCFS
 
     def start(self):
         self.thread.start()
@@ -119,45 +120,67 @@ def read_job(line: str):
     except:
         return None
 
+def take_jobs(all_jobs, quantum):
+    jobs = []
+    to_remove = []
+    for (i,j) in enumerate(all_jobs):
+        if j.arival <= quantum:
+            jobs.append(j)
+            to_remove.append(i)
+    for i in to_remove:
+        all_jobs.pop(i)
+    return jobs
+
+# one by one to each worker
+def spread_jobs(jobs, workers):
+    print("spreding")
+    while len(jobs) > 0:
+        for w in workers:
+            if len(jobs) > 0:
+                print(f"give job {jobs[0].name} to {w.name}")
+                w.jobs.append(jobs.pop(0))
+
 def main():
 
     file_path = "tasks1.txt"
-    jobs = []
+    all_jobs = []
     with open(file_path, "r") as f:
         lines = f.readlines()
         for line in lines:
-            print(line.strip("\n"))
             job = read_job(line)
             if job:
-                jobs.append(job)
+                all_jobs.append(job)
 
-    jobs.sort(key=lambda x : x.arival)
+    all_jobs.sort(key=lambda x : x.arival)
+    quantum = 1
     n_workers = 3
-    slice_p = len(jobs)//n_workers
-    jobs_w = []
 
-    for i in range(n_workers):
-        jobs_w.append(jobs[slice_p*i : slice_p*i + slice_p])
-    for i in range(len(jobs)%n_workers):
-        start = len(jobs) - len(jobs)%n_workers
-        jobs_w[i].append(jobs[start+i])
+    jobs = take_jobs(all_jobs, quantum)
 
     workers = []
     for i in range(n_workers):
-        t = Worker(jobs_w[i], f"worker{i}")
+        t = Worker([], f"worker{i}")
         t.print_jobs()
         workers.append(t)
+
+    spread_jobs(jobs, workers)
   
     for w in workers:
         w.start()
 
-    while len(workers) > 0:
+    while len(workers) > 0 or len(all_jobs) > 0:
+        quantum = workers[0].cur_time
+        if len(all_jobs) > 0:
+            jobs = take_jobs(all_jobs, quantum)
+            spread_jobs(jobs, workers)
         to_pop = []
+        time.sleep(1)
+        print("quantum:", quantum)
         for (i, t) in enumerate(workers):
             # first try to give something else to work on
-            if t.is_working() == False:
-                balance_baby(workers, t)
-            if t.is_working() == False:
+            #if t.is_working() == False:
+                #balance_baby(workers, t)
+            if t.is_working() == False and len(all_jobs) < 1:
                 print("joining {}".format( t.thread.native_id))
                 t.stop()
                 t.join()
@@ -168,4 +191,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
