@@ -27,6 +27,7 @@ class Worker:
         self.quantum = 2
         self.cur_task = None
         self.to_speak = False
+        self.alg = None
         self.chose_alg(alg)
 
     def chose_alg(self, alg: str):
@@ -183,7 +184,7 @@ def spread_jobs(jobs, workers):
             if len(jobs) > 0:
                 print(f"give job {jobs[0].name} to {workers[i].name}")
                 workers[i].jobs.append(jobs.pop(0))
-                last_index = i
+                last_index = (i + 1) % len(workers)
             else:
                 break
 
@@ -197,8 +198,83 @@ def least_used(jobs, workers):
                 the_worker = w
         the_worker.jobs.append(jobs.pop(0))
 
+
+
+def select_sched_alg():
+    print("Select scheduling algorithm")
+    sched_algs = ["FCFS", "round robin", "SJF", "Priority based"]
+    for (i, a) in enumerate(sched_algs):
+        print(f"{i}. {a}")
+    option = input("Your choise:")
+    try:
+        option = int(option)
+    except:
+        return None
+
+    try:
+        if sched_algs[option] == "round robin":
+            return "robin"
+        elif sched_algs[option] == "FCFS":
+            return "FCFS"
+        elif sched_algs[option] == "Priority based":
+            return "priority"
+        elif sched_algs[option] == "SJF":
+            return "SJF"
+        else:
+            return None
+    except:
+        return None
+
+
+def select_balancing_alg():
+    print("Select balancing algorithm")
+    sched_algs = ["round robin", "least used"]
+    for (i, a) in enumerate(sched_algs):
+        print(f"{i}. {a}")
+    option = input("Your choise:")
+    try:
+        option = int(option)
+    except:
+        return None
+
+    try:
+        if sched_algs[option] == "round robin":
+            return "robin"
+        elif sched_algs[option] == "least used":
+            return "least"
+        else:
+            return None
+    except:
+        return None
+
+sched_alg = "robine"
+balancing_alg = "robin"
+
+def menu():
+    global sched_alg
+    global balancing_alg
+    sched_alg = select_sched_alg()
+    while sched_alg == None:
+        sched_alg = select_sched_alg()
+    balancing_alg = select_balancing_alg()
+    while balancing_alg == None:
+        balancing_alg = select_balancing_alg()
+
+    print("")
+    print(f"Sched: {sched_alg}")
+    print(f"Balancing: {balancing_alg}")
+
+
 def main():
 
+    menu()
+    global sched_alg
+    global balancing_alg
+    balance_func = None
+    if balancing_alg == "robin":
+        balance_func = spread_jobs
+    elif balancing_alg == "least":
+        balance_func = least_used
     file_path = "tasks1.txt"
     all_jobs = []
     with open(file_path, "r") as f:
@@ -217,7 +293,7 @@ def main():
     workers = []
     stats = []
     for i in range(n_workers):
-        t = Worker([], f"worker{i}", alg="FCFS")
+        t = Worker([], f"worker{i}", alg=sched_alg)
         t.print_jobs()
         workers.append(t)
         stats.append(t)
@@ -231,7 +307,7 @@ def main():
         quantum += 2
         if len(all_jobs) > 0:
             jobs = take_jobs(all_jobs, quantum)
-            spread_jobs(jobs, workers)
+            balance_func(jobs, workers)
         to_pop = []
         time.sleep(1)
         print("quantum:", quantum)
@@ -240,8 +316,8 @@ def main():
             t.to_speak = True
         for (i, t) in enumerate(workers):
             # first try to give something else to work on
-            #if t.is_working() == False:
-                #balance_baby(workers, t)
+            if t.is_working() == False:
+                balance_baby(workers, t)
             t.pretty()
             if t.is_working() == False and len(all_jobs) < 1:
                 print("joining {}".format( t.thread.native_id))
@@ -253,7 +329,7 @@ def main():
                 workers.pop(i)
 
     for w in stats:
-        print(f"Worker {w.name} spended {w.cur_time} sec")
+        print(f"Worker {w.name} spent {w.cur_time} sec")
 
 if __name__ == "__main__":
     main()
