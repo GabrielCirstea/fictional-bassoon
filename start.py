@@ -87,13 +87,15 @@ class Worker:
 
     # first come first serverd
     def FCFS(self):
+        global rel_time
         for j in self.jobs:
             print(self.name, "Working on", j.name)
             self.cur_task = j
-            # round robin stuff
-            slp_time = j.duration
-            self.step_task(slp_time)
-            j.remaining -= slp_time
+            slp_time = rel_time
+            # to do step by step like a simulation
+            while j.remaining > 0:
+                self.step_task(slp_time)
+                j.remaining -= slp_time
             if j.is_done():
                 self.jobs.remove(j)
         if len(self.jobs) < 1:
@@ -115,23 +117,31 @@ class Worker:
 
     # sortest job first
     def SJF(self):
+        global rel_time
         if len(self.jobs) < 1:
             return
         next_j = min(self.jobs, key=lambda j : j.duration)
         print(self.name, "Working on", next_j.name, next_j.duration)
         self.cur_task = next_j
-        self.step_task(next_j.duration)
+        # to do step by step like a simulation
+        while next_j.remaining > 0:
+            self.step_task(rel_time)
+            next_j.remaining -= rel_time
         self.jobs.remove(next_j)
         if len(self.jobs) < 1:
             self.cur_task = None
 
     def priority_based(self):
+        global rel_time
         if len(self.jobs) < 1:
             return
         next_j = min(self.jobs, key=lambda j : j.priority)
         print(self.name, "Working on", next_j.name, next_j.duration)
         self.cur_task = next_j
-        self.step_task(next_j.duration)
+        # to do step by step like a simulation
+        while next_j.remaining > 0:
+            self.step_task(rel_time)
+            next_j.remaining -= rel_time
         self.jobs.remove(next_j)
         if len(self.jobs) < 1:
             self.cur_task = None
@@ -267,15 +277,17 @@ def menu():
 
 def main():
 
-    menu()
     global sched_alg
     global balancing_alg
+    global rel_time
+    re_balance = True
+    menu()
     balance_func = None
     if balancing_alg == "robin":
         balance_func = spread_jobs
     elif balancing_alg == "least":
         balance_func = least_used
-    file_path = "tasks1.txt"
+    file_path = "tasks2.txt"
     all_jobs = []
     with open(file_path, "r") as f:
         lines = f.readlines()
@@ -304,7 +316,7 @@ def main():
         w.start()
 
     while len(workers) > 0 or len(all_jobs) > 0:
-        quantum += 2
+        quantum += rel_time
         if len(all_jobs) > 0:
             jobs = take_jobs(all_jobs, quantum)
             balance_func(jobs, workers)
@@ -316,7 +328,7 @@ def main():
             t.to_speak = True
         for (i, t) in enumerate(workers):
             # first try to give something else to work on
-            if t.is_working() == False:
+            if re_balance == True and t.is_working() == False:
                 balance_baby(workers, t)
             t.pretty()
             if t.is_working() == False and len(all_jobs) < 1:
@@ -329,6 +341,7 @@ def main():
                 workers.pop(i)
 
     for w in stats:
+        w.stop()
         print(f"Worker {w.name} spent {w.cur_time} sec")
 
 if __name__ == "__main__":
